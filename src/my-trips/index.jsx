@@ -27,13 +27,11 @@ function MyTrips() {
     const tripsArray = [];
     
     querySnapshot.forEach((doc) => {
-      console.log(doc.id, " => ", doc.data());
       tripsArray.push(doc.data());
     });
     
     setUserTrips(tripsArray);
     setLoading(false);
-    console.log("All trips:", tripsArray);
   };
 
   // Add this function to handle trip deletion

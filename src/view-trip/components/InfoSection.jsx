@@ -28,8 +28,8 @@ function InfoSection({ trip }) {
         );
         setPhotoUrl(PhotoUrl);
       }
-    } catch (error) {
-      console.error("Error fetching photo:", error);
+    } catch {
+      // Use fallback image
     } finally {
       setIsLoading(false);
     }

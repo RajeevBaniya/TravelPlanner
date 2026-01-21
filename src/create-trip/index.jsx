@@ -6,7 +6,7 @@ import {
   AI_PROMPT,
 } from "@/constants/options";
 import { chatSession } from "@/service/AIModal";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 import { toast } from "sonner";
 import {
@@ -64,14 +64,65 @@ function CreateTrip() {
     });
   };
 
-  useEffect(() => {
-    console.log(formData);
-  }, [formData]);
-
   const login = useGoogleLogin({
     onSuccess: (codeResp) => GetUserProfile(codeResp),
-    onError: (error) => console.log(error),
+    onError: (error) => toast("Sign-in failed. Please try again."),
   });
+
+  const parseTripData = (rawTripData) => {
+    if (!rawTripData) {
+      throw new Error("Empty AI response");
+    }
+
+    if (typeof rawTripData === "object") {
+      return rawTripData;
+    }
+
+    const normalized = rawTripData
+      .toString()
+      .replace(/```json/gi, "")
+      .replace(/```/gi, "")
+      .trim();
+
+    const firstBraceIndex = normalized.indexOf("{");
+    const lastBraceIndex = normalized.lastIndexOf("}");
+
+    if (firstBraceIndex === -1 || lastBraceIndex === -1 || lastBraceIndex <= firstBraceIndex) {
+      throw new Error("Unable to locate JSON object in AI response");
+    }
+
+    const jsonSubstring = normalized.slice(firstBraceIndex, lastBraceIndex + 1);
+
+    return JSON.parse(jsonSubstring);
+  };
+
+  const validateTripData = (tripData) => {
+    if (!tripData || typeof tripData !== "object") {
+      return { valid: false, error: "Invalid trip data structure" };
+    }
+
+    if (!Array.isArray(tripData.hotelOptions) || tripData.hotelOptions.length === 0) {
+      return { valid: false, error: "No hotel options found in response" };
+    }
+
+    if (!tripData.itinerary || typeof tripData.itinerary !== "object") {
+      return { valid: false, error: "No itinerary found in response" };
+    }
+
+    const dayKeys = Object.keys(tripData.itinerary);
+    if (dayKeys.length === 0) {
+      return { valid: false, error: "Itinerary is empty" };
+    }
+
+    for (const dayKey of dayKeys) {
+      const dayData = tripData.itinerary[dayKey];
+      if (!dayData || !Array.isArray(dayData.plan) || dayData.plan.length === 0) {
+        return { valid: false, error: `Day ${dayKey} has no places to visit` };
+      }
+    }
+
+    return { valid: true };
+  };
 
   const OnGenerateTrip = async () => {
     const user = localStorage.getItem("user");
@@ -101,26 +152,49 @@ function CreateTrip() {
       .replace("{budget}", formData?.budget)
       .replace("{totalDays}", formData?.noOfDays);
 
-    const result = await chatSession.sendMessage(FINAL_PROMPT);
+    try {
+      const result = await chatSession.sendMessage(FINAL_PROMPT);
+      const rawTripData = result?.response?.text();
 
-    console.log(result?.response?.text());
-    setLoading(false);
-    SaveAiTrip(result?.response?.text());
+      const parsedTripData = parseTripData(rawTripData);
+      const validation = validateTripData(parsedTripData);
+
+      if (!validation.valid) {
+        setLoading(false);
+        toast.error(`Unable to generate trip: ${validation.error}. Please try again.`);
+        return;
+      }
+
+      setLoading(false);
+      SaveAiTrip(parsedTripData);
+    } catch (error) {
+      setLoading(false);
+      const errorMessage = error.message || "Unknown error occurred";
+      toast.error(`Failed to generate trip: ${errorMessage}. Please try again.`);
+    }
   };
 
-  const SaveAiTrip = async (TripData) => {
+  const SaveAiTrip = async (tripData) => {
     setLoading(true);
-    const user = JSON.parse(localStorage.getItem("user"));
-    const docId = Date.now().toString();
+    try {
+      const user = JSON.parse(localStorage.getItem("user"));
+      const docId = Date.now().toString();
 
-    await setDoc(doc(db, "AITrips", docId), {
-      userSelection: formData,
-      tripData: JSON.parse(TripData),
-      userEmail: user?.email,
-      id: docId,
-    });
-    setLoading(false);
-    navigate('/view-trip/'+docId)
+      await setDoc(
+        doc(db, "AITrips", docId),
+        {
+          userSelection: formData,
+          tripData,
+          userEmail: user?.email,
+          id: docId,
+        }
+      );
+      setLoading(false);
+      navigate('/view-trip/' + docId);
+    } catch (error) {
+      setLoading(false);
+      toast.error("Failed to save trip. Please try again.");
+    }
   };
 
   const GetUserProfile = (tokenInfo) => {
@@ -135,10 +209,12 @@ function CreateTrip() {
         }
       )
       .then((resp) => {
-        console.log(resp);
         localStorage.setItem("user", JSON.stringify(resp.data));
         setOpenDailog(false);
         OnGenerateTrip();
+      })
+      .catch(() => {
+        toast("Unable to fetch your profile. Please try again.");
       });
   };
 

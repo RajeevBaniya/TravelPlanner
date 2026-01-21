@@ -18,16 +18,52 @@ function Viewtrip() {
 
     // Used to get Trip Information from Firebase
 
+    const normalizeTripData = (rawTrip) => {
+        if (!rawTrip || typeof rawTrip !== "object") {
+            return rawTrip;
+        }
+
+        const rawTripData = rawTrip.tripData;
+
+        if (!rawTripData) {
+            return rawTrip;
+        }
+
+        if (typeof rawTripData === "object") {
+            return rawTrip;
+        }
+
+        try {
+            const normalized = rawTripData
+                .toString()
+                .replace(/```json/gi, "")
+                .replace(/```/gi, "")
+                .trim();
+            
+            const firstBraceIndex = normalized.indexOf("{");
+            const lastBraceIndex = normalized.lastIndexOf("}");
+
+            if (firstBraceIndex === -1 || lastBraceIndex === -1 || lastBraceIndex <= firstBraceIndex) {
+                return rawTrip;
+            }
+
+            const jsonSubstring = normalized.slice(firstBraceIndex, lastBraceIndex + 1);
+            const parsedTripData = JSON.parse(jsonSubstring);
+
+            return { ...rawTrip, tripData: parsedTripData };
+        } catch {
+            return rawTrip;
+        }
+    };
+
     const GetTripData=async()=>{
         const docRef=doc(db, 'AITrips', tripId)
         const docSnap=await getDoc(docRef);
 
         if(docSnap.exists()){
-            console.log("Dodocument:",docSnap.data());
-            setTrip(docSnap.data());
+            setTrip(normalizeTripData(docSnap.data()));
         }
         else{
-            console.log("No Such Document");
             toast('No trip Found!')
         }
     }

@@ -29,8 +29,8 @@ function UserTripCardItem({trip, onDelete}) {
         );
         setPhotoUrl(PhotoUrl);
       }
-    } catch (error) {
-      console.error("Error fetching photo:", error);
+    } catch {
+      // Use fallback image
     } finally {
       setLoading(false);
     }
@@ -44,8 +44,7 @@ function UserTripCardItem({trip, onDelete}) {
       await deleteDoc(doc(db, "AITrips", trip.id));
       toast.success("Trip deleted successfully");
       if (onDelete) onDelete(trip.id);
-    } catch (error) {
-      console.error("Error deleting trip:", error);
+    } catch {
       toast.error("Failed to delete trip");
     }
   };

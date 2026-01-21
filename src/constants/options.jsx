@@ -50,5 +50,52 @@ export const SelectBudgetOptions = [
     },
 ]
   
-// export const AI_PROMPT='Generate Travel Plan for Location : {location}, for {totalDays} Days for {traveler} with a {budget} budget, give me at least 4 Hotels options list with HotelName, Hotel address, Price, hotel image url, geo coordinates, rating, descriptions and suggest itinerary with placeName, Place Details, Place Image Url, Geo Coordinates, ticket Pricing, Time travel each of the location for {totalDays} days with each day plan with best time to visit in JSON format.'
-export const AI_PROMPT = 'Generate Travel Plan for Location: {location}, for {totalDays} Days for {traveler} with a {budget} budget (choose from Cheap: $0–$30, Moderate: $31–$70, Luxury: $71 and above). Provide at least 4 hotel options with HotelName, Hotel address, Price, hotel image URL, geo coordinates, rating, descriptions, and suggest an itinerary with placeName, Place Details, Place Image URL, Geo Coordinates, ticket Pricing, and Time travel for each location for {totalDays} days with a daily plan including the best time to visit in JSON format.';
+export const AI_PROMPT = `Generate a travel plan for Location: {location}, for {totalDays} Days, for {traveler}, with a {budget} budget.
+
+Return ONLY valid JSON (no markdown, no code fences, no extra text) with this EXACT structure:
+
+{
+  "hotelOptions": [
+    {
+      "hotelName": "string",
+      "hotelAddress": "string",
+      "price": {
+        "min": number,
+        "max": number
+      },
+      "hotelImageUrl": "string",
+      "geoCoordinates": {
+        "latitude": number,
+        "longitude": number
+      },
+      "rating": number,
+      "description": "string"
+    }
+  ],
+  "itinerary": {
+    "day1": {
+      "plan": [
+        {
+          "placeName": "string",
+          "placeDetails": "string",
+          "placeImageUrl": "string",
+          "geoCoordinates": {
+            "latitude": number,
+            "longitude": number
+          },
+          "ticketPricing": "string",
+          "rating": number,
+          "timeTravel": "string"
+        }
+      ]
+    }
+  }
+}
+
+Requirements:
+- Provide at least 4 hotels in hotelOptions array
+- Create day1, day2, day3... up to day{totalDays} in itinerary object
+- Each day must have a "plan" array with at least 3 places
+- All fields are required
+- Budget guide: Cheap ($10-$50/night), Moderate ($51-$150/night), Luxury ($151+/night)
+- Return ONLY the JSON object, nothing else`;

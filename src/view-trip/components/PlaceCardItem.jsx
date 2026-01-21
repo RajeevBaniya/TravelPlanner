@@ -29,8 +29,8 @@ function PlaceCardItem({ place }) {
         );
         setPhotoUrl(PhotoUrl);
       }
-    } catch (error) {
-      console.error("Error fetching photo:", error);
+    } catch {
+      // Use fallback image
     } finally {
       setLoading(false);
     }
